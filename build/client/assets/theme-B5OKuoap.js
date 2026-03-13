@@ -1,1 +1,0 @@
-import{a as m}from"./AuthContext-IShyyPOD.js";const r="bolt_theme",n="light",o=m(c());function c(){{const e=localStorage.getItem(r),t=document.querySelector("html")?.getAttribute("data-theme");return e??t??n}}function h(){const t=o.get()==="dark"?"light":"dark";o.set(t),localStorage.setItem(r,t),document.querySelector("html")?.setAttribute("data-theme",t)}export{h as a,o as t};
