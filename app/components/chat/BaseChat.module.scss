@@ -1,0 +1,19 @@
+.BaseChat {
+  &[data-chat-visible='false'] {
+    --workbench-inner-width: 100%;
+    --workbench-left: 0;
+
+    .Chat {
+      transition-property: transform, opacity;
+      transition-duration: 0.3s;
+      transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+      will-change: transform, opacity;
+      transform: translateX(-50%);
+      opacity: 0;
+    }
+  }
+}
+
+.Chat {
+  opacity: 1;
+}

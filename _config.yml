@@ -1,0 +1,96 @@
+# GitHub Pages Configuration for BoltDIY V2.0 Documentation
+title: "BoltDIY V2.0 Documentation"
+description: "Complete documentation for BoltDIY V2.0 - Enhanced AI Development Platform"
+baseurl: "/bolt.diy_V2.0"
+url: "https://stijnus.github.io"
+
+# Theme - use a better looking theme
+remote_theme: pages-themes/cayman@v0.2.0
+
+# Markdown processing
+markdown: kramdown
+kramdown:
+  syntax_highlighter: rouge
+  syntax_highlighter_opts:
+    block:
+      line_numbers: false
+
+# Plugins
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
+  - jekyll-seo-tag
+  - jekyll-relative-links
+  - jekyll-optional-front-matter
+  - jekyll-titles-from-headings
+  - jekyll-github-metadata
+
+# SEO and metadata
+author: "Stijnus"
+twitter:
+  username: stijnus
+logo: /assets/images/logo.png
+
+# Navigation (appears in header)
+navigation:
+  - title: "🏠 Home"
+    url: /
+  - title: "📖 Documentation"
+    url: /docs/
+  - title: "📋 Setup Guide"
+    url: /docs/guides/SETUP_GUIDE
+  - title: "🤖 AI Models"
+    url: /docs/guides/ai-models
+  - title: "🐛 Troubleshooting" 
+    url: /docs/guides/troubleshooting
+  - title: "❓ FAQ"
+    url: /docs/guides/faq
+
+# Collections
+collections:
+  docs:
+    output: true
+    permalink: /:collection/:name/
+
+# Defaults
+defaults:
+  - scope:
+      path: ""
+      type: "pages"
+    values:
+      layout: "default"
+  - scope:
+      path: "docs"
+      type: "pages"
+    values:
+      layout: "default"
+
+# Exclude from processing
+exclude:
+  - node_modules/
+  - .cache/
+  - .env*
+  - package.json
+  - package-lock.json
+  - pnpm-lock.yaml
+  - tsconfig.json
+  - vite.config.ts
+  - dist/
+  - .git/
+  - .github/
+  - scripts/
+  - app/
+  - public/
+  - CONTRIBUTING.md
+  - CLAUDE.md
+  - WARP.md
+  - TODO.md
+  - QUICK_FIX.md
+  - README.md
+  - MULTI_MODEL_IMPLEMENTATION_SUMMARY.md
+  - GITHUB_PAGES_SETUP.md
+# Include specific files that might be excluded by default
+include:
+  - docs/
+  - SETUP_GUIDE.md
+  - assets/
