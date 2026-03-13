@@ -108,6 +108,8 @@ CREATE TRIGGER update_chats_updated_at
 -- ====================================
 -- 8. ROW LEVEL SECURITY (RLS)
 -- ====================================
+-- IMPORTANT: RLS policies must avoid circular dependencies to prevent infinite recursion
+-- When policies need to check related tables, use SECURITY DEFINER functions
 
 -- Enable RLS on all tables
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
@@ -121,6 +123,8 @@ DROP POLICY IF EXISTS "Users can update own profile" ON public.users;
 DROP POLICY IF EXISTS "Users can insert own profile" ON public.users;
 
 DROP POLICY IF EXISTS "Users can view own projects" ON public.projects;
+DROP POLICY IF EXISTS "Anyone can view public projects" ON public.projects;
+DROP POLICY IF EXISTS "Collaborators can view shared projects" ON public.projects;
 DROP POLICY IF EXISTS "Users can create projects" ON public.projects;
 DROP POLICY IF EXISTS "Users can update own projects" ON public.projects;
 DROP POLICY IF EXISTS "Users can delete own projects" ON public.projects;
@@ -130,8 +134,27 @@ DROP POLICY IF EXISTS "Users can create chats" ON public.chats;
 DROP POLICY IF EXISTS "Users can update own chats" ON public.chats;
 DROP POLICY IF EXISTS "Users can delete own chats" ON public.chats;
 
-DROP POLICY IF EXISTS "Users can view collaborators of their projects" ON public.project_collaborators;
-DROP POLICY IF EXISTS "Project owners can manage collaborators" ON public.project_collaborators;
+DROP POLICY IF EXISTS "Users can view project collaborators" ON public.project_collaborators;
+DROP POLICY IF EXISTS "Project owners can add collaborators" ON public.project_collaborators;
+DROP POLICY IF EXISTS "Project owners can update collaborators" ON public.project_collaborators;
+DROP POLICY IF EXISTS "Project owners can delete collaborators" ON public.project_collaborators;
+
+-- Helper function to check project ownership (prevents RLS recursion)
+CREATE OR REPLACE FUNCTION is_project_owner(project_id uuid, user_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM projects
+    WHERE id = project_id AND projects.user_id = user_id
+  );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION is_project_owner(uuid, uuid) TO authenticated;
 
 -- Users policies
 CREATE POLICY "Users can view own profile"
@@ -146,15 +169,25 @@ CREATE POLICY "Users can insert own profile"
   ON public.users FOR INSERT
   WITH CHECK (auth.uid() = id);
 
--- Projects policies
+-- Projects policies (split to avoid recursion)
 CREATE POLICY "Users can view own projects"
   ON public.projects FOR SELECT
+  TO authenticated
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Anyone can view public projects"
+  ON public.projects FOR SELECT
+  TO authenticated
+  USING (visibility = 'public');
+
+CREATE POLICY "Collaborators can view shared projects"
+  ON public.projects FOR SELECT
+  TO authenticated
   USING (
-    auth.uid() = user_id OR
-    visibility = 'public' OR
     EXISTS (
       SELECT 1 FROM public.project_collaborators
-      WHERE project_id = projects.id AND user_id = auth.uid()
+      WHERE project_collaborators.project_id = projects.id
+      AND project_collaborators.user_id = auth.uid()
     )
   );
 
@@ -187,27 +220,30 @@ CREATE POLICY "Users can delete own chats"
   ON public.chats FOR DELETE
   USING (auth.uid() = user_id);
 
--- Collaborators policies
-CREATE POLICY "Users can view collaborators of their projects"
+-- Collaborators policies (use SECURITY DEFINER function to avoid recursion)
+CREATE POLICY "Users can view project collaborators"
   ON public.project_collaborators FOR SELECT
+  TO authenticated
   USING (
-    EXISTS (
-      SELECT 1 FROM public.projects
-      WHERE id = project_collaborators.project_id
-      AND user_id = auth.uid()
-    ) OR
-    user_id = auth.uid()
+    user_id = auth.uid() OR
+    is_project_owner(project_id, auth.uid())
   );
 
-CREATE POLICY "Project owners can manage collaborators"
-  ON public.project_collaborators FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.projects
-      WHERE id = project_collaborators.project_id
-      AND user_id = auth.uid()
-    )
-  );
+CREATE POLICY "Project owners can add collaborators"
+  ON public.project_collaborators FOR INSERT
+  TO authenticated
+  WITH CHECK (is_project_owner(project_id, auth.uid()));
+
+CREATE POLICY "Project owners can update collaborators"
+  ON public.project_collaborators FOR UPDATE
+  TO authenticated
+  USING (is_project_owner(project_id, auth.uid()))
+  WITH CHECK (is_project_owner(project_id, auth.uid()));
+
+CREATE POLICY "Project owners can delete collaborators"
+  ON public.project_collaborators FOR DELETE
+  TO authenticated
+  USING (is_project_owner(project_id, auth.uid()));
 
 -- ====================================
 -- 9. AUTO-CREATE USER PROFILE
