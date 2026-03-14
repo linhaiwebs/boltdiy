@@ -1,5 +1,5 @@
 import type { UIMessage } from 'ai';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { StreamingMessageParser } from '~/lib/runtime/message-parser';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { createScopedLogger } from '~/utils/logger';
@@ -40,13 +40,34 @@ const messageParser = new StreamingMessageParser({
 
 export function useMessageParser() {
   const [parsedMessages, setParsedMessages] = useState<{ [key: number]: string }>({});
+  const accumulatedRef = useRef<{ [key: number]: string }>({});
 
   const parseMessages = useCallback((messages: UIMessage[], isLoading: boolean) => {
     if (!isLoading) {
       messageParser.reset();
+      accumulatedRef.current = {};
+
+      const finalParsed: { [key: number]: string } = {};
+
+      for (const [index, message] of messages.entries()) {
+        if (message.role === 'assistant') {
+          const text = Array.isArray((message as any).parts)
+            ? (message as any).parts
+                .filter((p: any) => p?.type === 'text' && typeof p.text === 'string')
+                .map((p: any) => p.text)
+                .join('')
+            : ((message as any).content ?? '');
+
+          finalParsed[index] = messageParser.parse(message.id, text);
+        }
+      }
+
+      messageParser.reset();
+      setParsedMessages(finalParsed);
+      return;
     }
 
-    const newParsed: { [key: number]: string } = {};
+    const newAccumulated = { ...accumulatedRef.current };
 
     for (const [index, message] of messages.entries()) {
       if (message.role === 'assistant') {
@@ -57,11 +78,13 @@ export function useMessageParser() {
               .join('')
           : ((message as any).content ?? '');
 
-        newParsed[index] = messageParser.parse(message.id, text);
+        const delta = messageParser.parse(message.id, text);
+        newAccumulated[index] = (newAccumulated[index] || '') + delta;
       }
     }
 
-    setParsedMessages(newParsed);
+    accumulatedRef.current = newAccumulated;
+    setParsedMessages({ ...newAccumulated });
   }, []);
 
   return { parsedMessages, parseMessages };

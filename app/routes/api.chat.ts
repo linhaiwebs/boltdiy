@@ -106,7 +106,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
     options.onFinish = createOnFinishHandler(options);
 
     const result = await streamText(messages, context.cloudflare.env, options);
-    const resp = result.toUIMessageStreamResponse({ sendFinish: false });
+    const resp = result.toUIMessageStreamResponse();
 
     await stream.switchSource(resp.body!);
 
@@ -138,7 +138,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
           fallbackOptions.onFinish = createOnFinishHandler(fallbackOptions);
 
           const result = await streamText(messages, context.cloudflare.env, fallbackOptions);
-          const resp = result.toUIMessageStreamResponse({ sendFinish: false });
+          const resp = result.toUIMessageStreamResponse();
 
           await stream.switchSource(resp.body!);
 
