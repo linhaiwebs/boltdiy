@@ -164,10 +164,43 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                 })}
               >
                 <div className="rounded-3xl border border-bolt-elements-borderColor/70 bg-bolt-elements-background-depth-1/90 shadow-lg backdrop-blur-xl">
+                  {isStreaming && (
+                    <div className="flex items-center gap-2 px-5 pt-4 pb-1 text-sm text-bolt-elements-textSecondary">
+                      <svg
+                        className="w-4 h-4 animate-spin"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                        />
+                      </svg>
+                      <span>AI is thinking...</span>
+                    </div>
+                  )}
                   <textarea
                     ref={textareaRef}
-                    className="w-full resize-none rounded-3xl border-none bg-transparent px-5 pb-5 pt-5 text-base text-bolt-elements-textPrimary outline-none placeholder:text-bolt-elements-textTertiary"
+                    className={classNames(
+                      'w-full resize-none rounded-3xl border-none bg-transparent px-5 pb-5 pt-5 text-base text-bolt-elements-textPrimary outline-none placeholder:text-bolt-elements-textTertiary transition-opacity',
+                      { 'opacity-40 cursor-not-allowed': isStreaming },
+                    )}
                     onKeyDown={(event) => {
+                      if (isStreaming) {
+                        event.preventDefault();
+                        return;
+                      }
+
                       if (event.key === 'Enter') {
                         if (event.shiftKey) {
                           return;
@@ -180,14 +213,17 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                     }}
                     value={input}
                     onChange={(event) => {
-                      handleInputChange?.(event);
+                      if (!isStreaming) {
+                        handleInputChange?.(event);
+                      }
                     }}
                     style={{
                       minHeight: TEXTAREA_MIN_HEIGHT,
                       maxHeight: TEXTAREA_MAX_HEIGHT,
                     }}
-                    placeholder="How can BoltDIY help you today?"
+                    placeholder={isStreaming ? 'Waiting for response...' : 'How can BoltDIY help you today?'}
                     translate="no"
+                    disabled={isStreaming}
                   />
                   <ClientOnly>
                     {() => (

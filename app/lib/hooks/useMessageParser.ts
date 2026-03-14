@@ -22,7 +22,6 @@ const messageParser = new StreamingMessageParser({
     onActionOpen: (data) => {
       logger.trace('onActionOpen', data.action);
 
-      // we only add shell actions when when the close tag got parsed because only then we have the content
       if (data.action.type !== 'shell') {
         workbenchStore.addAction(data);
       }
@@ -43,12 +42,11 @@ export function useMessageParser() {
   const [parsedMessages, setParsedMessages] = useState<{ [key: number]: string }>({});
 
   const parseMessages = useCallback((messages: UIMessage[], isLoading: boolean) => {
-    let reset = false;
-
-    if (import.meta.env.DEV && !isLoading) {
-      reset = true;
+    if (!isLoading) {
       messageParser.reset();
     }
+
+    const newParsed: { [key: number]: string } = {};
 
     for (const [index, message] of messages.entries()) {
       if (message.role === 'assistant') {
@@ -59,14 +57,11 @@ export function useMessageParser() {
               .join('')
           : ((message as any).content ?? '');
 
-        const newParsedContent = messageParser.parse(message.id, text);
-
-        setParsedMessages((prevParsed) => ({
-          ...prevParsed,
-          [index]: !reset ? (prevParsed[index] || '') + newParsedContent : newParsedContent,
-        }));
+        newParsed[index] = messageParser.parse(message.id, text);
       }
     }
+
+    setParsedMessages(newParsed);
   }, []);
 
   return { parsedMessages, parseMessages };
