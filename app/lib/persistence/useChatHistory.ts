@@ -256,6 +256,11 @@ export function useChatHistory() {
         setConnectionError(null);
 
         const supabase = createClient();
+
+        if (!supabase) {
+          return;
+        }
+
         const finalUrlId = currentUrlId || currentChatId;
 
         // Use upsert to insert or update the chat

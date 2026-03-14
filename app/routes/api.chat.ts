@@ -113,7 +113,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
     return new Response(stream.readable, {
       status: 200,
       headers: {
-        contentType: 'text/plain; charset=utf-8',
+        'Content-Type': 'text/plain; charset=utf-8',
       },
     });
   } catch (error) {
@@ -144,7 +144,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
           return new Response(stream.readable, {
             status: 200,
             headers: {
-              contentType: 'text/plain; charset=utf-8',
+              'Content-Type': 'text/plain; charset=utf-8',
             },
           });
         } catch (fallbackError) {

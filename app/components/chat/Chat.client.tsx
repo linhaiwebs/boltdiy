@@ -113,7 +113,7 @@ export const ChatImpl = memo(({ initialMessages, storeMessageHistory }: ChatProp
   useEffect(() => {
     parseMessages(messages, isLoading);
 
-    if (messages.length > initialMessages.length) {
+    if (!isLoading && messages.length > initialMessages.length) {
       storeMessageHistory(messages, modelSelection.fullId).catch((error) => toast.error(error.message));
     }
   }, [messages, isLoading, parseMessages, initialMessages.length, modelSelection.fullId, storeMessageHistory]);
