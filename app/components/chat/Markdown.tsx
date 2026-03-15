@@ -60,13 +60,16 @@ export const Markdown = memo(({ children, html = false, limitedMarkdown = false 
     } satisfies Components;
   }, []);
 
+  const memoizedRemarkPlugins = useMemo(() => remarkPlugins(limitedMarkdown), [limitedMarkdown]);
+  const memoizedRehypePlugins = useMemo(() => rehypePlugins(html), [html]);
+
   return (
     <div className={styles.MarkdownContent}>
       <ReactMarkdown
         allowedElements={allowedHTMLElements}
         components={components}
-        remarkPlugins={remarkPlugins(limitedMarkdown)}
-        rehypePlugins={rehypePlugins(html)}
+        remarkPlugins={memoizedRemarkPlugins}
+        rehypePlugins={memoizedRehypePlugins}
       >
         {children}
       </ReactMarkdown>

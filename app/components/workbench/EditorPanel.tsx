@@ -57,6 +57,7 @@ export const EditorPanel = memo(
     onFileSave,
     onFileReset,
   }: EditorPanelProps) => {
+
     renderLogger.trace('EditorPanel');
 
     const theme = useStore(themeStore);
@@ -252,6 +253,29 @@ export const EditorPanel = memo(
           </div>
         </Panel>
       </PanelGroup>
+    );
+  },
+  (prevProps, nextProps) => {
+    if (prevProps.isStreaming && nextProps.isStreaming) {
+      return (
+        prevProps.editorDocument === nextProps.editorDocument &&
+        prevProps.selectedFile === nextProps.selectedFile &&
+        prevProps.files === nextProps.files &&
+        prevProps.unsavedFiles === nextProps.unsavedFiles
+      );
+    }
+
+    return (
+      prevProps.isStreaming === nextProps.isStreaming &&
+      prevProps.editorDocument === nextProps.editorDocument &&
+      prevProps.selectedFile === nextProps.selectedFile &&
+      prevProps.files === nextProps.files &&
+      prevProps.unsavedFiles === nextProps.unsavedFiles &&
+      prevProps.onFileSelect === nextProps.onFileSelect &&
+      prevProps.onEditorChange === nextProps.onEditorChange &&
+      prevProps.onEditorScroll === nextProps.onEditorScroll &&
+      prevProps.onFileSave === nextProps.onFileSave &&
+      prevProps.onFileReset === nextProps.onFileReset
     );
   },
 );
