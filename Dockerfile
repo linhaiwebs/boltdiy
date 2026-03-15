@@ -22,7 +22,7 @@ FROM base AS dependencies
 COPY package.json pnpm-lock.yaml ./
 
 # Install all dependencies
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 
 # ================================
 # Stage 3: Build
@@ -51,7 +51,7 @@ WORKDIR /app
 
 # Install only production dependencies (includes wrangler/workerd)
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 
 # Copy built application
 COPY --from=build /app/build ./build
