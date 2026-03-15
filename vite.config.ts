@@ -33,6 +33,12 @@ export default defineConfig((config) => {
     },
     optimizeDeps: {
       include: ['buffer'],
+      exclude: [],
+    },
+    ssr: {
+      optimizeDeps: {
+        exclude: ['buffer'],
+      },
     },
   };
 });
