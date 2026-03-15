@@ -16,7 +16,6 @@ dist
 dist-ssr
 build
 .cache
-*.local
 
 # IDE
 .vscode
@@ -30,9 +29,8 @@ build
 *.sw?
 .DS_Store
 
-# Environment files
-.env*
-!.env.example
+# Environment files - allow .env and .env.local for build/runtime
+# .env.example is kept as reference; actual secret files are allowed through
 *.vars
 
 # Cloudflare
