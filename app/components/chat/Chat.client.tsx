@@ -24,11 +24,17 @@ const toastAnimation = cssTransition({
 export function Chat() {
   renderLogger.trace('Chat');
 
-  const { ready, initialMessages, storeMessageHistory } = useChatHistory();
+  const { ready, initialMessages, storeMessageHistory, syncToCloud } = useChatHistory();
 
   return (
     <>
-      {ready && <ChatImpl initialMessages={initialMessages} storeMessageHistory={storeMessageHistory} />}
+      {ready && (
+        <ChatImpl
+          initialMessages={initialMessages}
+          storeMessageHistory={storeMessageHistory}
+          syncToCloud={syncToCloud}
+        />
+      )}
       <ToastContainer
         closeButton={({ closeToast }) => {
           return (
@@ -63,9 +69,10 @@ export function Chat() {
 interface ChatProps {
   initialMessages: UIMessage[];
   storeMessageHistory: (messages: UIMessage[], modelFullId?: FullModelId) => Promise<void>;
+  syncToCloud: (messages: UIMessage[], modelFullId?: FullModelId) => Promise<void>;
 }
 
-export const ChatImpl = memo(({ initialMessages, storeMessageHistory }: ChatProps) => {
+export const ChatImpl = memo(({ initialMessages, storeMessageHistory, syncToCloud }: ChatProps) => {
   useShortcuts();
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -78,6 +85,15 @@ export const ChatImpl = memo(({ initialMessages, storeMessageHistory }: ChatProp
 
   const [animationScope, animate] = useAnimate();
 
+  const syncToCloudRef = useRef(syncToCloud);
+  syncToCloudRef.current = syncToCloud;
+
+  const storeMessageHistoryRef = useRef(storeMessageHistory);
+  storeMessageHistoryRef.current = storeMessageHistory;
+
+  const modelSelectionRef = useRef(modelSelection);
+  modelSelectionRef.current = modelSelection;
+
   const { messages, status, stop, sendMessage } = useChat({
     api: '/api/chat',
     messages: initialMessages,
@@ -88,12 +104,25 @@ export const ChatImpl = memo(({ initialMessages, storeMessageHistory }: ChatProp
       console.error('[Chat] Error:', error);
       toast.error(error.message || 'Failed to send message. Please check your API key configuration.');
     },
-    // Pass model dynamically on each request
     async onRequest({ options }) {
       options.body = {
         ...options.body,
-        model: modelSelection.fullId,
+        model: modelSelectionRef.current.fullId,
       };
+    },
+    onFinish: ({ messages: allMessages, isAbort, isError }) => {
+      if (isError) {
+        return;
+      }
+
+      const model = modelSelectionRef.current.fullId;
+      storeMessageHistoryRef.current(allMessages, model).catch((error) => toast.error(error.message));
+
+      if (!isAbort) {
+        syncToCloudRef.current(allMessages, model).catch((error) => {
+          console.warn('Failed to sync chat to cloud after finish:', error);
+        });
+      }
     },
   });
 
@@ -112,11 +141,7 @@ export const ChatImpl = memo(({ initialMessages, storeMessageHistory }: ChatProp
 
   useEffect(() => {
     parseMessages(messages, isLoading);
-
-    if (!isLoading && messages.length > initialMessages.length) {
-      storeMessageHistory(messages, modelSelection.fullId).catch((error) => toast.error(error.message));
-    }
-  }, [messages, isLoading, parseMessages, initialMessages.length, modelSelection.fullId, storeMessageHistory]);
+  }, [messages, isLoading, parseMessages]);
 
   useEffect(() => {
     if (!activeChatId) {
@@ -125,16 +150,6 @@ export const ChatImpl = memo(({ initialMessages, storeMessageHistory }: ChatProp
 
     setChatModel(activeChatId, modelSelection.provider, modelSelection.modelId);
   }, [activeChatId, modelSelection.provider, modelSelection.modelId]);
-
-  useEffect(() => {
-    if (!activeChatId || messages.length === 0) {
-      return;
-    }
-
-    storeMessageHistory(messages, modelSelection.fullId).catch((error) => {
-      console.warn('Failed to persist model preference', error);
-    });
-  }, [activeChatId, modelSelection.fullId, storeMessageHistory]);
 
   const scrollTextArea = () => {
     const textarea = textareaRef.current;
