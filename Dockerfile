@@ -4,7 +4,7 @@
 # ================================
 # Stage 1: Base Image
 # ================================
-FROM node:20-alpine AS base
+FROM node:20-slim AS base
 
 # Install pnpm
 ENV PNPM_VERSION=10.18.0
@@ -21,7 +21,7 @@ FROM base AS dependencies
 # Copy package files
 COPY package.json pnpm-lock.yaml ./
 
-# Install dependencies (with frozen lockfile)
+# Install all dependencies
 RUN pnpm install --frozen-lockfile
 
 # ================================
@@ -42,13 +42,16 @@ RUN pnpm run build
 # ================================
 # Stage 4: Production Runtime
 # ================================
-FROM base AS production
+FROM node:20-slim AS production
+
+ENV PNPM_VERSION=10.18.0
+RUN npm install -g pnpm@${PNPM_VERSION}
 
 WORKDIR /app
 
-# Install only production dependencies
+# Install only production dependencies (includes wrangler/workerd)
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --prod --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
 # Copy built application
 COPY --from=build /app/build ./build
@@ -56,18 +59,17 @@ COPY --from=build /app/public ./public
 COPY --from=build /app/wrangler.toml ./wrangler.toml
 COPY --from=build /app/bindings.sh ./bindings.sh
 
-# Install Wrangler for production server
-RUN pnpm add -g wrangler@4
+RUN chmod +x ./bindings.sh
 
 # Expose default Wrangler port
 EXPOSE 8788
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
   CMD node -e "require('http').get('http://localhost:8788', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
 
 # Start the production server
-CMD ["sh", "-c", "bindings=$(./bindings.sh) && wrangler pages dev ./build/client $bindings --port 8788 --ip 0.0.0.0"]
+CMD ["sh", "-c", "bindings=$(./bindings.sh) && ./node_modules/.bin/wrangler pages dev ./build/client $bindings --port 8788 --ip 0.0.0.0"]
 
 # ================================
 # Stage 5: Development
