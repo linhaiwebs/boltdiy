@@ -8,8 +8,7 @@ FROM node:20-alpine AS base
 
 # Install pnpm
 ENV PNPM_VERSION=10.18.0
-RUN coreutils-single --coreutils-prog-shebang=install \
-    && npm install -g pnpm@${PNPM_VERSION} \
+RUN npm install -g pnpm@${PNPM_VERSION} \
     && pnpm config set store-dir /root/.pnpm-store
 
 WORKDIR /app
@@ -44,6 +43,8 @@ RUN pnpm run build
 # Stage 4: Production Runtime
 # ================================
 FROM base AS production
+
+WORKDIR /app
 
 # Install only production dependencies
 COPY package.json pnpm-lock.yaml ./
