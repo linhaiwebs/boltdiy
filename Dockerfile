@@ -25,6 +25,14 @@ RUN pnpm install --no-frozen-lockfile
 # ================================
 FROM base AS build
 
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_ANON_KEY
+ARG VITE_LOG_LEVEL=info
+
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
+ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
+ENV VITE_LOG_LEVEL=$VITE_LOG_LEVEL
+
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY --from=dependencies /root/.pnpm-store /root/.pnpm-store
 
@@ -43,7 +51,7 @@ RUN npm install -g pnpm@${PNPM_VERSION}
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --no-frozen-lockfile
+RUN pnpm install --prod --no-frozen-lockfile
 
 COPY --from=build /app/build ./build
 COPY --from=build /app/public ./public

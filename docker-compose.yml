@@ -8,6 +8,9 @@ services:
       target: production
       args:
         - NODE_ENV=production
+        - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+        - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
+        - VITE_LOG_LEVEL=${VITE_LOG_LEVEL:-info}
     container_name: boltdiy-v2-app
     image: boltdiy-v2:latest
     ports:
