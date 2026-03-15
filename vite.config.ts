@@ -1,5 +1,6 @@
-import { vitePlugin as remixVitePlugin } from '@remix-run/dev';
+import { cloudflareDevProxyVitePlugin as remixCloudflareDevProxy, vitePlugin as remixVitePlugin } from '@remix-run/dev';
 import { defineConfig, type ViteDevServer } from 'vite';
+import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import { optimizeCssModules } from 'vite-plugin-optimize-css-modules';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
@@ -9,7 +10,17 @@ export default defineConfig((config) => {
       target: 'esnext',
     },
     plugins: [
-      config.mode !== 'test' && remixVitePlugin({
+      nodePolyfills({
+        include: ['buffer'],
+        exclude: ['path'],
+        globals: {
+          process: true,
+          Buffer: true,
+        },
+        protocolImports: true,
+      }),
+      config.mode !== 'test' && remixCloudflareDevProxy(),
+      remixVitePlugin({
         future: {
           v3_fetcherPersist: true,
           v3_relativeSplatPath: true,
@@ -20,22 +31,12 @@ export default defineConfig((config) => {
       chrome129IssuePlugin(),
       config.mode === 'production' && optimizeCssModules({ apply: 'build' }),
     ],
-    define: {
-      'global.Buffer': 'globalThis.Buffer',
-    },
     resolve: {
       alias: {
         path: 'pathe',
         'node:path': 'pathe',
-        buffer: 'buffer',
         'node:buffer': 'buffer',
       },
-    },
-    optimizeDeps: {
-      include: ['buffer'],
-    },
-    ssr: {
-      noExternal: [],
     },
   };
 });

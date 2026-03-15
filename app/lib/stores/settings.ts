@@ -54,7 +54,7 @@ export const shortcutsStore = map<Shortcuts>({
   },
 });
 
-export const defaultEditorSettings: EditorSettings = {
+const defaultEditorSettings: EditorSettings = {
   tabSize: 2,
   fontSize: 14,
   fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
@@ -64,14 +64,14 @@ export const defaultEditorSettings: EditorSettings = {
   lineNumbers: true,
 };
 
-export const defaultAISettings: AISettings = {
+const defaultAISettings: AISettings = {
   model: 'claude-sonnet-3.5',
   temperature: 0.7,
   maxTokens: 8192,
   streamResponse: true,
 };
 
-export const defaultUserPreferences: UserPreferences = {
+const defaultUserPreferences: UserPreferences = {
   language: 'en',
   notifications: true,
   autoSave: true,
@@ -92,6 +92,7 @@ shortcutsStore.subscribe((shortcuts) => {
   });
 });
 
+// helper functions to update specific settings
 export function updateEditorSettings(updates: Partial<EditorSettings>) {
   const currentSettings = settingsStore.get();
   settingsStore.set({
@@ -114,57 +115,4 @@ export function updateUserPreferences(updates: Partial<UserPreferences>) {
     ...currentSettings,
     preferences: { ...currentSettings.preferences, ...updates },
   });
-}
-
-export async function loadSettingsFromServer(): Promise<void> {
-  try {
-    const response = await fetch('/api/settings');
-
-    if (!response.ok) {
-      return;
-    }
-
-    const { settings } = (await response.json()) as {
-      settings: {
-        editor_settings: Partial<EditorSettings> | null;
-        ai_settings: Partial<AISettings> | null;
-        preferences: Partial<UserPreferences> | null;
-      } | null;
-    };
-
-    if (!settings) {
-      return;
-    }
-
-    const current = settingsStore.get();
-    settingsStore.set({
-      ...current,
-      editor: settings.editor_settings
-        ? { ...defaultEditorSettings, ...settings.editor_settings }
-        : current.editor,
-      ai: settings.ai_settings ? { ...defaultAISettings, ...settings.ai_settings } : current.ai,
-      preferences: settings.preferences
-        ? { ...defaultUserPreferences, ...settings.preferences }
-        : current.preferences,
-    });
-  } catch {
-    // silently ignore network errors; defaults remain in place
-  }
-}
-
-export async function saveSettingsToServer(): Promise<void> {
-  try {
-    const current = settingsStore.get();
-    await fetch('/api/settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        editor_settings: current.editor,
-        ai_settings: current.ai,
-        preferences: current.preferences,
-      }),
-    });
-  } catch {
-    // silently ignore network errors
-  }
 }

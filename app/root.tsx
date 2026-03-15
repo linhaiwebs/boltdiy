@@ -1,6 +1,6 @@
 import { useStore } from '@nanostores/react';
 import { DirectionProvider } from '@radix-ui/react-direction';
-import type { LinksFunction } from '@remix-run/node';
+import type { LinksFunction } from '@remix-run/cloudflare';
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from '@remix-run/react';
 import xtermStyles from '@xterm/xterm/css/xterm.css?url';
 import { useEffect } from 'react';
