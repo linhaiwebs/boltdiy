@@ -1,4 +1,4 @@
-import { type ActionFunctionArgs } from '@remix-run/cloudflare';
+import { type ActionFunctionArgs } from '@remix-run/node';
 import type { ModelMessage, UIMessage } from 'ai';
 import { MAX_RESPONSE_SEGMENTS, MAX_TOKENS } from '~/lib/.server/llm/constants';
 import { CONTINUE_PROMPT } from '~/lib/.server/llm/prompts';
@@ -36,21 +36,19 @@ function uiToModelMessages(uiMessages: UIMessage[]): ModelMessage[] {
     });
 }
 
-async function chatAction({ context, request }: ActionFunctionArgs) {
+async function chatAction({ request }: ActionFunctionArgs) {
   const body = (await request.json()) as any;
   const uiMessages = (body?.messages ?? []) as UIMessage[];
   const messages = uiToModelMessages(uiMessages);
 
-  // extract model selection from request body (optional)
   let fullModelId = body?.model as string | undefined;
   console.log(`[api.chat] Received model from request body: ${fullModelId}`);
 
-  // Validate that the requested provider has an API key
   if (fullModelId) {
     const [provider] = fullModelId.split(':') as [AIProvider, string];
-    if (!isProviderAvailableOnServer(provider, context.cloudflare.env)) {
+    if (!isProviderAvailableOnServer(provider)) {
       console.warn(`[api.chat] Provider ${provider} is not available (no API key). Falling back to best available provider.`);
-      const fallbackProvider = getBestAvailableProviderOnServer(context.cloudflare.env);
+      const fallbackProvider = getBestAvailableProviderOnServer();
       if (fallbackProvider) {
         const fallbackModel = getDefaultModel(fallbackProvider);
         if (fallbackModel) {
@@ -60,8 +58,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
       }
     }
   } else {
-    // No model specified, use best available
-    const fallbackProvider = getBestAvailableProviderOnServer(context.cloudflare.env);
+    const fallbackProvider = getBestAvailableProviderOnServer();
     if (fallbackProvider) {
       const fallbackModel = getDefaultModel(fallbackProvider);
       if (fallbackModel) {
@@ -73,7 +70,6 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
 
   const stream = new SwitchableStream();
 
-  // define onFinish handler that can be reused
   const createOnFinishHandler = (streamOptions: StreamTextOptions) => {
     return async ({ text: content, finishReason }: { text: string; finishReason: string }) => {
       if (finishReason !== 'length') {
@@ -90,7 +86,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
       messages.push({ role: 'assistant', content });
       messages.push({ role: 'user', content: CONTINUE_PROMPT });
 
-      const continued = await streamText(messages, context.cloudflare.env, streamOptions);
+      const continued = await streamText(messages, streamOptions);
       const continuedResp = continued.toUIMessageStreamResponse({ sendStart: false });
 
       return stream.switchSource(continuedResp.body!);
@@ -100,12 +96,12 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
   try {
     const options: StreamTextOptions = {
       toolChoice: 'none',
-      fullModelId, // pass model selection to streamText
+      fullModelId,
     };
 
     options.onFinish = createOnFinishHandler(options);
 
-    const result = await streamText(messages, context.cloudflare.env, options);
+    const result = await streamText(messages, options);
     const resp = result.toUIMessageStreamResponse();
 
     await stream.switchSource(resp.body!);
@@ -120,24 +116,20 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
   } catch (error) {
     console.log(error);
 
-    // check if error is related to missing API key
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
     if (errorMessage.includes('Missing API key')) {
-      // if API key is missing and user specified a model, try to fall back to default
       if (fullModelId) {
         console.log(`API key missing for selected model, falling back to default model`);
 
         try {
           const fallbackOptions: StreamTextOptions = {
             toolChoice: 'none',
-
-            // don't specify fullModelId to use default
           };
 
           fallbackOptions.onFinish = createOnFinishHandler(fallbackOptions);
 
-          const result = await streamText(messages, context.cloudflare.env, fallbackOptions);
+          const result = await streamText(messages, fallbackOptions);
           const resp = result.toUIMessageStreamResponse();
 
           await stream.switchSource(resp.body!);

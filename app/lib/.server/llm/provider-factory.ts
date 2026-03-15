@@ -11,9 +11,6 @@ import {
 } from './providers';
 import type { AIProvider } from './providers/types';
 
-/**
- * Registry of provider factory functions.
- */
 const PROVIDERS = {
   anthropic: anthropicProvider,
   deepseek: deepseekProvider,
@@ -24,34 +21,24 @@ const PROVIDERS = {
   zhipuai: zhipuaiProvider,
 } as const;
 
-/**
- * Get API key for a specific provider from environment.
- */
-export function getProviderApiKey(provider: AIProvider, env: Env): string | undefined {
+export function getProviderApiKey(provider: AIProvider): string | undefined {
   const providerConfig = PROVIDERS[provider]?.config;
 
   if (!providerConfig) {
     return undefined;
   }
 
-  const envVar = providerConfig.apiKeyEnvVar;
-
-  // try Cloudflare env first, then process.env
-  return (env as any)[envVar] || process.env[envVar];
+  return process.env[providerConfig.apiKeyEnvVar];
 }
 
-/**
- * Create a model instance for the specified provider and model.
- */
-export function createModel(provider: AIProvider = DEFAULT_PROVIDER, modelId?: string, env?: Env): LanguageModel {
+export function createModel(provider: AIProvider = DEFAULT_PROVIDER, modelId?: string): LanguageModel {
   const providerImpl = PROVIDERS[provider];
 
   if (!providerImpl) {
     throw new Error(`Unsupported provider: ${provider}`);
   }
 
-  // get API key from environment
-  const apiKey = env ? getProviderApiKey(provider, env) : undefined;
+  const apiKey = getProviderApiKey(provider);
 
   if (!apiKey) {
     throw new Error(
@@ -59,7 +46,6 @@ export function createModel(provider: AIProvider = DEFAULT_PROVIDER, modelId?: s
     );
   }
 
-  // validate model ID if provided
   if (modelId) {
     const modelInfo = getModel(provider, modelId);
 
@@ -69,26 +55,19 @@ export function createModel(provider: AIProvider = DEFAULT_PROVIDER, modelId?: s
     }
   }
 
-  // create and return the model
   return providerImpl.createModel(apiKey, modelId);
 }
 
-/**
- * Create a model instance with full ID (provider:modelId format).
- */
-export function createModelFromFullId(fullId: string, env: Env): LanguageModel {
+export function createModelFromFullId(fullId: string): LanguageModel {
   const [provider, modelId] = fullId.split(':') as [AIProvider, string];
 
   if (!provider) {
-    return createModel(DEFAULT_PROVIDER, DEFAULT_MODEL_ID, env);
+    return createModel(DEFAULT_PROVIDER, DEFAULT_MODEL_ID);
   }
 
-  return createModel(provider, modelId, env);
+  return createModel(provider, modelId);
 }
 
-/**
- * Get the default model instance.
- */
-export function getDefaultModelInstance(env: Env): LanguageModel {
-  return createModel(DEFAULT_PROVIDER, DEFAULT_MODEL_ID, env);
+export function getDefaultModelInstance(): LanguageModel {
+  return createModel(DEFAULT_PROVIDER, DEFAULT_MODEL_ID);
 }
